@@ -107,22 +107,31 @@ with tab2:
 
         df = pd.read_csv(uploaded_file)
 
+        # ★重要：列名ゆれ・空欄対策
+        df.columns = df.columns.str.strip().str.lower()
+        df = df.fillna("")
+
         st.write("プレビュー")
         st.dataframe(df.head())
 
         st.write("CSV読み込み成功")
 
         if st.button("CSVを自動補完してDB登録"):
+            from search_engine import search_song
+
             count = 0
+            skipped = 0
 
             for i, row in df.iterrows():
-                title = row.get("title") or row.get("Title")
+                title = str(row.get("title", "")).strip()
 
-                if not title or str(title) == "nan":
+                if not title:
+                    skipped += 1
                     continue
 
-                # ★DBキャッシュ（これだけでOK）
+                # ★DBにあればスキップ
                 if get_song_by_title(title):
+                    skipped += 1
                     continue
 
                 song_id = f"csv_{i}_{title}"
@@ -130,7 +139,7 @@ with tab2:
                 search_song(title, song_id)
                 count += 1
 
-            st.success(f"{count}件登録しました")
+            st.success(f"{count}件登録しました / {skipped}件スキップしました")
             st.rerun()
 
     st.divider()
@@ -139,31 +148,55 @@ with tab2:
 
     if st.button("songs.csv取り込み"):
         import pandas as pd
+        from search_engine import search_song
 
         df = pd.read_csv("songs.csv")
+        df.columns = df.columns.str.strip().str.lower()
+        df = df.fillna("")
 
         count = 0
+        skipped = 0
 
         for i, row in df.iterrows():
-            title = row["title"]
+            title = str(row.get("title", "")).strip()
+
+            if not title:
+                skipped += 1
+                continue
+
+            if get_song_by_title(title):
+                skipped += 1
+                continue
+
             song_id = f"import_{i}_{title}"
 
             search_song(title, song_id)
             count += 1
 
-        st.success(f"{count}件インポート")
+        st.success(f"{count}件インポート / {skipped}件スキップ")
 
     st.divider()
 
     st.subheader("➕ 曲追加（自動補完）")
 
     with st.form("add_song"):
-
         title = st.text_input("曲名")
 
         submitted = st.form_submit_button("追加")
 
         if submitted:
+            from search_engine import search_song
+
+            title = title.strip()
+
+            if not title:
+                st.error("曲名を入力してください")
+                st.stop()
+
+            if get_song_by_title(title):
+                st.info("すでにDBに登録されています")
+                st.stop()
+
             song_id = f"manual_{title}"
 
             search_song(title, song_id)
