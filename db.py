@@ -4,24 +4,29 @@ DB_NAME = "aikatsu.db"
 
 import re
 import unicodedata
+import sqlite3
 
-def normalize(text) -> str:
-    if text is None:
-        return ""
+def add_song(song: dict):
+    conn = get_connection()
+    cur = conn.cursor()
 
-    text = str(text)
+    song["title_norm"] = normalize(song["title"])
 
-    if text == "nan":
-        return ""
+    cur.execute("""
+    INSERT INTO songs (
+        id, title, release_date, composer, lyricist,
+        arranger, album, series, unit,
+        source, source_url, confidence, status, title_norm
+    ) VALUES (
+        :id, :title, :release_date, :composer, :lyricist,
+        :arranger, :album, :series, :unit,
+        :source, :source_url, :confidence, :status, :title_norm
+    )
+    """, song)
 
-    import unicodedata
-    import re
+    conn.commit()
+    conn.close()
 
-    text = unicodedata.normalize("NFKC", text)
-    text = text.lower()
-    text = re.sub(r"[！!？?☆★・ー\-_\s　]", "", text)
-
-    return text
 # =========================
 # 接続
 # =========================
