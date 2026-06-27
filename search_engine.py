@@ -227,6 +227,11 @@ def search_song(title: str, song_id: str) -> Song:
         print(f"[SKIP SAVE] no creator info: {title}", flush=True)
         raise Exception("作曲者・作詞者・編曲者がすべて空欄のためDB保存をスキップしました")
 
+    # アイカツ関連と判断できない場合は保存しない
+    if not data.get("series") and not data.get("album") and not data.get("source_url"):
+        print(f"[SKIP SAVE] not Aikatsu related: {title}", flush=True)
+        raise Exception("アイカツ関連楽曲として確認できなかったためDB保存をスキップしました")
+
     song = Song(
         id=song_id,
         title=title,
