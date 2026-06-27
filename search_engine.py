@@ -173,6 +173,19 @@ def search_song(title: str, song_id: str) -> Song:
     # -------------------------
     # 6. DB保存（必ず成功）
     # -------------------------
-    add_song(song.__dict__)
-
+    add_song({
+        "id": song.id,
+        "title": song.title,
+        "release_date": song.release_date,
+        "composer": song.composer,
+        "lyricist": song.lyricist,
+        "arranger": song.arranger,
+        "album": song.album,
+        "series": song.series,
+        "unit": song.unit,
+        "source": song.source,
+        "source_url": song.source_url,
+        "confidence": song.confidence,
+        "status": song.status
+    })
     return song
