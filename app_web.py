@@ -1,4 +1,6 @@
 import streamlit as st
+
+from db import get_all_songs, search_song_db
 st.write("APP START")
 st.write("TAB定義前")
 tab1, tab2 = st.tabs(["A", "B"])
