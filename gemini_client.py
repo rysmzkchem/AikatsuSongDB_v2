@@ -12,7 +12,7 @@ from google.genai import types
 # API設定
 # =========================
 API_KEY = os.getenv("API_KEY")
-MODEL_NAME = os.getenv("MODEL_NAME", "gemini-1.5-flash")
+MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.0-flash")
 
 if not API_KEY:
     raise ValueError("API_KEY is missing. Streamlit Cloud の Secrets に API_KEY を設定してください。")
@@ -47,7 +47,7 @@ def extract_json(text: str) -> str:
 def get_song_info(title: str) -> str:
     try:
         prompt_template = PROMPT_PATH.read_text(encoding="utf-8")
-        prompt = prompt_template.format(title=title)
+        prompt = prompt_template.replace("{title}", title)
 
         response = client.models.generate_content(
             model=MODEL_NAME,
