@@ -194,7 +194,7 @@ with tab2:
                 "title": result.title,
                 "release_date": result.release_date,
                 "composer": result.composer,
-                "lyricist
+                "lyricist": result.lyricist,
             st.divider()
             
 st.subheader("⚠️ DBリセット")
