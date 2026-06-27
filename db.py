@@ -9,17 +9,16 @@ def normalize(text):
     if not text:
         return ""
 
-    # 全角→半角・統一
+    try:
+        text = str(text)
+    except:
+        return ""
+
     text = unicodedata.normalize("NFKC", text)
-
-    # 小文字化
     text = text.lower()
-
-    # 記号・空白除去（強化版）
     text = re.sub(r"[！!？?☆★・ー\-_\s　]", "", text)
 
     return text
-
 import sqlite3
 # =========================
 # 接続

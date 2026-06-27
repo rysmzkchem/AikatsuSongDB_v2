@@ -72,8 +72,7 @@ def search_wikipedia(title: str):
 # =========================
 # メイン検索
 # =========================
-def search_song(title: str, song_id: str) -> Song:
-
+def search_song(title: str, song_id: str, csv_data: dict = None) -> Song:
     # -------------------------
     # 0. 正規化（重要）
     # -------------------------
@@ -118,7 +117,13 @@ def search_song(title: str, song_id: str) -> Song:
         "source_url": "",
         "confidence": "unknown"
     }
-
+# -------------------------
+# CSVデータ優先反映（重要）
+# -------------------------
+if csv_data:
+    for k, v in csv_data.items():
+        if v:
+            data[k] = v
     # -------------------------
     # 3. Wikipedia
     # -------------------------
