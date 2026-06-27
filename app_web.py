@@ -195,6 +195,7 @@ with tab2:
                 "release_date": result.release_date,
                 "composer": result.composer,
                 "lyricist": result.lyricist,
+            })
             st.divider()
             
 st.subheader("⚠️ DBリセット")
