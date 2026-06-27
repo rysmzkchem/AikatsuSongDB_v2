@@ -81,7 +81,17 @@ with tab1:
         rows = sorted(rows, key=lambda x: x["title"])
     elif sort_option == "曲名（Z→A）":
         rows = sorted(rows, key=lambda x: x["title"], reverse=True)
+    import pandas as pd
 
+    export_rows = [dict(r) for r in rows]
+    export_df = pd.DataFrame(export_rows)
+
+    st.download_button(
+        label="📥 表示中の楽曲をCSV出力",
+        data=export_df.to_csv(index=False, encoding="utf-8-sig"),
+        file_name="aikatsu_song_db_export.csv",
+        mime="text/csv"
+    )
     st.divider()
 
     for row in rows:
@@ -89,7 +99,72 @@ with tab1:
             st.subheader(row["title"])
             st.write(row["release_date"])
             st.write(f"{row['album']} / {row['series']} / {row['unit']}")
+             with st.expander("✏️ 編集"):
+            new_release_date = st.text_input(
+                "リリース日",
+                row["release_date"],
+                key=f"release_{row['id']}"
+            )
 
+            new_composer = st.text_input(
+                "作曲者",
+                row["composer"],
+                key=f"composer_{row['id']}"
+            )
+
+            new_lyricist = st.text_input(
+                "作詞者",
+                row["lyricist"],
+                key=f"lyricist_{row['id']}"
+            )
+
+            new_arranger = st.text_input(
+                "編曲者",
+                row["arranger"],
+                key=f"arranger_{row['id']}"
+            )
+
+            new_album = st.text_input(
+                "アルバム",
+                row["album"],
+                key=f"album_{row['id']}"
+            )
+
+            new_series = st.text_input(
+                "シリーズ",
+                row["series"],
+                key=f"series_{row['id']}"
+            )
+
+            new_unit = st.text_input(
+                "ユニット",
+                row["unit"],
+                key=f"unit_{row['id']}"
+            )
+
+            if st.button("更新", key=f"update_{row['id']}"):
+                from db import update_song
+
+                update_song(
+                    row["id"],
+                    {
+                        "title": row["title"],
+                        "release_date": new_release_date,
+                        "composer": new_composer,
+                        "lyricist": new_lyricist,
+                        "arranger": new_arranger,
+                        "album": new_album,
+                        "series": new_series,
+                        "unit": new_unit,
+                        "source": row["source"],
+                        "source_url": row["source_url"],
+                        "confidence": "manual",
+                        "status": "edited",
+                    }
+                )
+
+                st.success("更新しました")
+                st.rerun()
 
 # =========================
 # TAB2
