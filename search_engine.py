@@ -1,12 +1,3 @@
-from gemini_client import get_song_info
-from models import Song
-from db import init_db, save_song, get_song_by_title
-import json
-
-# DB初期化（必ず最初に実行）
-init_db()
-
-
 def search_song(title: str, song_id: str) -> Song:
 
     # -----------------------------
@@ -34,17 +25,37 @@ def search_song(title: str, song_id: str) -> Song:
         )
 
     # -----------------------------
-    # ② Gemini検索
+    # ② Wikipedia → Gemini フォールバック
     # -----------------------------
-    print(f"[API CALL] {title}")
+    wiki_data = search_wikipedia(title)
 
-    raw_json = get_song_info(title)
+    if wiki_data:
+        print(f"[WIKIPEDIA HIT] {title}")
+        data = wiki_data
+        data["source"] = "Wikipedia"
 
-    try:
-        data = json.loads(raw_json)
-    except Exception:
-        print(f"[ERROR] JSON parse failed: {title}")
-        data = {}
+    else:
+        print(f"[API CALL] {title}")
+
+        raw_json = get_song_info(title)
+
+        try:
+            data = json.loads(raw_json)
+            data["source"] = "Gemini"
+        except Exception:
+            print(f"[ERROR] JSON parse failed: {title}")
+            data = {
+                "release_date": "",
+                "composer": "",
+                "lyricist": "",
+                "arranger": "",
+                "album": "",
+                "series": "",
+                "unit": "",
+                "source": "unknown",
+                "source_url": "",
+                "confidence": "unknown"
+            }
 
     # -----------------------------
     # ③ Song生成

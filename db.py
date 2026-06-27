@@ -3,13 +3,21 @@
 DB_NAME = "aikatsu.db"
 
 import re
+import unicodedata
 
 def normalize(text):
     if not text:
         return ""
 
+    # 全角→半角・統一
+    text = unicodedata.normalize("NFKC", text)
+
+    # 小文字化
     text = text.lower()
-    text = re.sub(r"[！!？?☆★・ー\-_\s]", "", text)
+
+    # 記号・空白除去（強化版）
+    text = re.sub(r"[！!？?☆★・ー\-_\s　]", "", text)
+
     return text
 
 import sqlite3
@@ -47,6 +55,13 @@ def init_db():
     )
     """)
 
+    # カラム存在チェック
+    cur.execute("PRAGMA table_info(songs)")
+    columns = [c[1] for c in cur.fetchall()]
+
+    if "title_norm" not in columns:
+        cur.execute("ALTER TABLE songs ADD COLUMN title_norm TEXT")
+
     conn.commit()
     conn.close()
 
@@ -57,6 +72,8 @@ def init_db():
 def add_song(song):
     conn = get_connection()
     cur = conn.cursor()
+
+    song["title_norm"] = normalize(song["title"])
 
     cur.execute("""
     INSERT INTO songs VALUES (
@@ -87,24 +104,49 @@ def get_all_songs():
 # =========================
 # 検索
 # =========================
+def get_song_by_title(title):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT * FROM songs
+    WHERE title_norm = ?
+    """, (normalize(title),))
+
+    row = cur.fetchone()
+    conn.close()
+    return row
 def search_song_db(keyword):
     conn = get_connection()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
     keyword = normalize(keyword)
 
-    cursor.execute("SELECT * FROM songs")
-    rows = cursor.fetchall()
+    cur.execute("""
+    SELECT * FROM songs
+    WHERE title_norm LIKE ?
+    """, (f"%{keyword}%",))
 
-    result = []
+    rows = cur.fetchall()
+    conn.close()
+
+    return rows
+#存在チェック
+def get_song_by_title(title):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM songs")
+    rows = cur.fetchall()
 
     for r in rows:
-        if keyword in normalize(r["title"]):
-            result.append(r)
+        if normalize(title) == normalize(r["title"]):
+            conn.close()
+            return r
 
-    return result
-
-
+    conn.close()
+    return None
+    
 # =========================
 # 更新
 # =========================
@@ -155,6 +197,26 @@ def delete_song(song_id):
     cur = conn.cursor()
 
     cur.execute("DELETE FROM songs WHERE id=?", (song_id,))
+
+    conn.commit()
+    conn.close()
+
+# =========================
+# 既存データ正規化更新（←ここに追加）
+# =========================
+def update_all_title_norm():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id, title FROM songs")
+    rows = cur.fetchall()
+
+    for r in rows:
+        cur.execute("""
+        UPDATE songs
+        SET title_norm = ?
+        WHERE id = ?
+        """, (normalize(r["title"]), r["id"]))
 
     conn.commit()
     conn.close()
