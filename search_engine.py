@@ -1,47 +1,76 @@
 from gemini_client import get_song_info
 from models import Song
-from db import get_song_by_title, save_song
+from db import get_song_by_title, save_song, normalize
 import json
 import requests
 
+
 # =========================
-# Wikipedia検索
+# Wikipedia検索（安定版）
 # =========================
 def search_wikipedia(title: str):
     try:
-        url = f"https://ja.wikipedia.org/api/rest_v1/page/summary/{title}"
-        res = requests.get(url, timeout=5)
+        # 検索API（summary直叩きより安定）
+        search_url = "https://ja.wikipedia.org/w/api.php"
 
+        params = {
+            "action": "query",
+            "list": "search",
+            "srsearch": title,
+            "format": "json"
+        }
+
+        res = requests.get(search_url, params=params, timeout=5)
         if res.status_code != 200:
             return None
 
         data = res.json()
+
+        if not data.get("query", {}).get("search"):
+            return None
+
+        page_title = data["query"]["search"][0]["title"]
+
+        # summary取得
+        summary_url = f"https://ja.wikipedia.org/api/rest_v1/page/summary/{page_title}"
+        res2 = requests.get(summary_url, timeout=5)
+
+        if res2.status_code != 200:
+            return None
+
+        page = res2.json()
 
         return {
             "release_date": "",
             "composer": "",
             "lyricist": "",
             "arranger": "",
-            "album": data.get("title", ""),
+            "album": page.get("title", ""),
             "series": "",
             "unit": "",
-            "source_url": data.get("content_urls", {}).get("desktop", {}).get("page", ""),
-            "confidence": "low",
+            "source_url": page.get("content_urls", {}).get("desktop", {}).get("page", ""),
+            "confidence": "low"
         }
 
-    except Exception:
+    except Exception as e:
+        print(f"[WIKI ERROR] {e}")
         return None
 
 
 # =========================
-# メイン検索（DB → Wiki → Gemini）
+# メイン検索
 # =========================
 def search_song(title: str, song_id: str) -> Song:
 
     # -------------------------
-    # ① DBキャッシュ
+    # 0. 正規化（重要）
     # -------------------------
-    cached = get_song_by_title(title)
+    norm_title = normalize(title)
+
+    # -------------------------
+    # 1. DBキャッシュ（安定版）
+    # -------------------------
+    cached = get_song_by_title(norm_title)
 
     if cached:
         print(f"[DB HIT] {title}")
@@ -63,7 +92,7 @@ def search_song(title: str, song_id: str) -> Song:
         )
 
     # -------------------------
-    # ② 初期データ（安全ベース）
+    # 2. 初期安全データ
     # -------------------------
     data = {
         "release_date": "",
@@ -79,36 +108,39 @@ def search_song(title: str, song_id: str) -> Song:
     }
 
     # -------------------------
-    # ③ Wikipedia
+    # 3. Wikipedia
     # -------------------------
     wiki_data = search_wikipedia(title)
 
     if wiki_data:
-        print(f"[WIKIPEDIA HIT] {title}")
+        print(f"[WIKI HIT] {title}")
         data.update(wiki_data)
         data["source"] = "Wikipedia"
 
     # -------------------------
-    # ④ Geminiフォールバック
+    # 4. Gemini（最終手段）
     # -------------------------
     else:
-        print(f"[API CALL] {title}")
+        print(f"[GEMINI CALL] {title}")
 
         try:
-            raw_json = get_song_info(title)
-            gemini_data = json.loads(raw_json)
+            raw = get_song_info(title)
+            gemini_data = json.loads(raw)
 
             if isinstance(gemini_data, dict):
                 data.update(gemini_data)
 
             data["source"] = "Gemini"
 
-        except Exception:
-            print(f"[ERROR] Gemini JSON parse failed: {title}")
+        except Exception as e:
+            print(f"[GEMINI ERROR] {e}")
+
+            # ★完全フォールバック（絶対落とさない）
             data["source"] = "unknown"
+            data["confidence"] = "low"
 
     # -------------------------
-    # ⑤ Song生成
+    # 5. Song生成
     # -------------------------
     song = Song(
         id=song_id,
@@ -127,7 +159,7 @@ def search_song(title: str, song_id: str) -> Song:
     )
 
     # -------------------------
-    # ⑥ DB保存
+    # 6. DB保存（必ず成功）
     # -------------------------
     save_song(song)
 
