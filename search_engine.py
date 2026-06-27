@@ -8,14 +8,11 @@ import re
 import unicodedata
 
 
-# =========================
-# 正規化
-# =========================
 def normalize(text):
     if not text:
         return ""
 
-    text = str(text)  # NaN対策
+    text = str(text)
     text = unicodedata.normalize("NFKC", text)
     text = text.lower()
     text = re.sub(r"[！!？?☆★・ー\-_\s　]", "", text)
@@ -23,9 +20,17 @@ def normalize(text):
     return text
 
 
-# =========================
-# Wikipedia検索
-# =========================
+def has_missing_required(data):
+    required = ["release_date", "composer", "lyricist", "arranger", "album", "series", "unit"]
+    return any(not data.get(k) for k in required)
+
+
+def merge_if_empty(base: dict, new: dict):
+    for k, v in new.items():
+        if not base.get(k) and v:
+            base[k] = v
+
+
 def search_wikipedia(title: str):
     try:
         search_url = "https://ja.wikipedia.org/w/api.php"
@@ -73,21 +78,13 @@ def search_wikipedia(title: str):
         return None
 
 
-# =========================
-# メイン検索
-# =========================
 def search_song(title: str, song_id: str) -> Song:
-
     norm_title = normalize(title)
 
-    # -------------------------
-    # 1. DBキャッシュ
-    # -------------------------
     cached = get_song_by_title(norm_title)
 
     if cached:
         print(f"[DB HIT] {title}")
-
         return Song(
             id=cached["id"],
             title=cached["title"],
@@ -104,9 +101,6 @@ def search_song(title: str, song_id: str) -> Song:
             status=cached["status"]
         )
 
-    # -------------------------
-    # 2. 初期データ
-    # -------------------------
     data = {
         "release_date": "",
         "composer": "",
@@ -120,39 +114,34 @@ def search_song(title: str, song_id: str) -> Song:
         "confidence": "unknown"
     }
 
-    # -------------------------
-    # 3. Wikipedia
-    # -------------------------
     wiki_data = search_wikipedia(title)
 
     if wiki_data:
         print(f"[WIKI HIT] {title}")
-        data.update(wiki_data)
+        merge_if_empty(data, wiki_data)
         data["source"] = "Wikipedia"
 
-    # -------------------------
-    # 4. Gemini
-    # -------------------------
-    else:
-        print(f"[GEMINI CALL] {title}")
+    if has_missing_required(data):
+        print(f"[GEMINI補完] {title}")
 
         try:
             raw = get_song_info(title)
             gemini_data = json.loads(raw)
 
             if isinstance(gemini_data, dict):
-                data.update(gemini_data)
+                merge_if_empty(data, gemini_data)
 
-            data["source"] = "Gemini"
+            if data.get("source"):
+                data["source"] = data["source"] + "+Gemini"
+            else:
+                data["source"] = "Gemini"
 
         except Exception as e:
             print(f"[GEMINI ERROR] {e}")
-            data["source"] = "unknown"
-            data["confidence"] = "low"
+            if not data.get("source"):
+                data["source"] = "unknown"
+            data["confidence"] = data.get("confidence") or "low"
 
-    # -------------------------
-    # 5. Song生成
-    # -------------------------
     song = Song(
         id=song_id,
         title=title,
@@ -169,9 +158,6 @@ def search_song(title: str, song_id: str) -> Song:
         status="done"
     )
 
-    # -------------------------
-    # 6. DB保存（1回だけ）
-    # -------------------------
     add_song(song.__dict__)
 
     return song
