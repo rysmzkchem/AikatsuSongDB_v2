@@ -32,7 +32,7 @@ def has_missing_required(data):
 
 def search_aikatsu_wiki(title: str):
     try:
-        search_url = "https://aikatsu.fandom.com/ja/wiki/Special:Search"
+        search_url = "https://all-aikatsu.fandom.com/wiki/All_Aikatsu!_Wiki"
 
         params = {
             "query": title
