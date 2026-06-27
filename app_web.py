@@ -100,46 +100,46 @@ with tab1:
             st.write(row["release_date"])
             st.write(f"{row['album']} / {row['series']} / {row['unit']}")
             with st.expander("✏️ 編集"):
-            new_release_date = st.text_input(
-                "リリース日",
-                row["release_date"],
-                key=f"release_{row['id']}"
-            )
+                new_release_date = st.text_input(
+                    "リリース日",
+                    row["release_date"],
+                    key=f"release_{row['id']}"
+                )
 
-            new_composer = st.text_input(
-                "作曲者",
-                row["composer"],
-                key=f"composer_{row['id']}"
-            )
+                new_composer = st.text_input(
+                    "作曲者",
+                    row["composer"],
+                    key=f"composer_{row['id']}"
+                )
 
-            new_lyricist = st.text_input(
-                "作詞者",
-                row["lyricist"],
-                key=f"lyricist_{row['id']}"
-            )
+                new_lyricist = st.text_input(
+                    "作詞者",
+                    row["lyricist"],
+                    key=f"lyricist_{row['id']}"
+                )
 
-            new_arranger = st.text_input(
-                "編曲者",
-                row["arranger"],
-                key=f"arranger_{row['id']}"
-            )
+                new_arranger = st.text_input(
+                    "編曲者",
+                    row["arranger"],
+                    key=f"arranger_{row['id']}"
+                )
 
-            new_album = st.text_input(
-                "アルバム",
-                row["album"],
-                key=f"album_{row['id']}"
-            )
+                new_album = st.text_input(
+                    "アルバム",
+                    row["album"],
+                    key=f"album_{row['id']}"
+                )
 
-            new_series = st.text_input(
-                "シリーズ",
-                row["series"],
-                key=f"series_{row['id']}"
-            )
+                new_series = st.text_input(
+                    "シリーズ",
+                    row["series"],
+                    key=f"series_{row['id']}"
+                )
 
-            new_unit = st.text_input(
-                "ユニット",
-                row["unit"],
-                key=f"unit_{row['id']}"
+                new_unit = st.text_input(
+                    "ユニット",
+                    row["unit"],
+                    key=f"unit_{row['id']}"
             )
 
             if st.button("更新", key=f"update_{row['id']}"):
