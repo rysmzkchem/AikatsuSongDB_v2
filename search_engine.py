@@ -27,7 +27,7 @@ def merge_if_empty(base: dict, new: dict):
 
 
 def has_missing_required(data):
-    required = ["release_date", "composer", "lyricist", "arranger", "album", "series", "unit"]
+    required = ["release_date", "composer", "lyricist", "arranger", "album"]
     return any(not data.get(k) for k in required)
 
 def search_aikatsu_wiki(title: str):
@@ -223,9 +223,9 @@ def search_song(title: str, song_id: str) -> Song:
 
     print(f"[FINAL DATA] {title}: {data}", flush=True)
 
-    if data.get("source") == "Gemini" and has_missing_required(data):
-        print(f"[SKIP SAVE] Gemini failed or incomplete: {title}", flush=True)
-        raise Exception("Gemini補完に失敗したためDB保存をスキップしました")
+    if not data.get("composer") and not data.get("lyricist") and not data.get("arranger"):
+        print(f"[SKIP SAVE] no creator info: {title}", flush=True)
+        raise Exception("作曲者・作詞者・編曲者がすべて空欄のためDB保存をスキップしました")
 
     song = Song(
         id=song_id,
