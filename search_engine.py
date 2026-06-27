@@ -1,65 +1,115 @@
+from gemini_client import get_song_info
+from models import Song
+from db import get_song_by_title, save_song
+import json
+import requests
+
+# =========================
+# Wikipedia検索
+# =========================
+def search_wikipedia(title: str):
+    try:
+        url = f"https://ja.wikipedia.org/api/rest_v1/page/summary/{title}"
+        res = requests.get(url, timeout=5)
+
+        if res.status_code != 200:
+            return None
+
+        data = res.json()
+
+        return {
+            "release_date": "",
+            "composer": "",
+            "lyricist": "",
+            "arranger": "",
+            "album": data.get("title", ""),
+            "series": "",
+            "unit": "",
+            "source_url": data.get("content_urls", {}).get("desktop", {}).get("page", ""),
+            "confidence": "low",
+        }
+
+    except Exception:
+        return None
+
+
+# =========================
+# メイン検索（DB → Wiki → Gemini）
+# =========================
 def search_song(title: str, song_id: str) -> Song:
 
-    # -----------------------------
-    # ① DBチェック
-    # -----------------------------
+    # -------------------------
+    # ① DBキャッシュ
+    # -------------------------
     cached = get_song_by_title(title)
 
     if cached:
         print(f"[DB HIT] {title}")
 
         return Song(
-            id=cached[0],
-            title=cached[1],
-            release_date=cached[2],
-            composer=cached[3],
-            lyricist=cached[4],
-            arranger=cached[5],
-            album=cached[6],
-            series=cached[7],
-            unit=cached[8],
-            source=cached[9],
-            source_url=cached[10],
-            confidence=cached[11],
-            status=cached[12]
+            id=cached["id"],
+            title=cached["title"],
+            release_date=cached["release_date"],
+            composer=cached["composer"],
+            lyricist=cached["lyricist"],
+            arranger=cached["arranger"],
+            album=cached["album"],
+            series=cached["series"],
+            unit=cached["unit"],
+            source=cached["source"],
+            source_url=cached["source_url"],
+            confidence=cached["confidence"],
+            status=cached["status"]
         )
 
-    # -----------------------------
-    # ② Wikipedia → Gemini フォールバック
-    # -----------------------------
+    # -------------------------
+    # ② 初期データ（安全ベース）
+    # -------------------------
+    data = {
+        "release_date": "",
+        "composer": "",
+        "lyricist": "",
+        "arranger": "",
+        "album": "",
+        "series": "",
+        "unit": "",
+        "source": "",
+        "source_url": "",
+        "confidence": "unknown"
+    }
+
+    # -------------------------
+    # ③ Wikipedia
+    # -------------------------
     wiki_data = search_wikipedia(title)
 
     if wiki_data:
         print(f"[WIKIPEDIA HIT] {title}")
-        data = wiki_data
+        data.update(wiki_data)
         data["source"] = "Wikipedia"
 
+    # -------------------------
+    # ④ Geminiフォールバック
+    # -------------------------
     else:
         print(f"[API CALL] {title}")
 
-        raw_json = get_song_info(title)
-
         try:
-            data = json.loads(raw_json)
-            data["source"] = "Gemini"
-        except Exception:
-            print(f"[ERROR] JSON parse failed: {title}")
-            data = {
-                "release_date": "",
-                "composer": "",
-                "lyricist": "",
-                "arranger": "",
-                "album": "",
-                "series": "",
-                "unit": "",
-                "source": "unknown",
-                "source_url": "",
-                "confidence": "unknown"
-            }
+            raw_json = get_song_info(title)
+            gemini_data = json.loads(raw_json)
 
-    # -----------------------------
-    # ③ Song生成
-    # -----------------------------
+            if isinstance(gemini_data, dict):
+                data.update(gemini_data)
+
+            data["source"] = "Gemini"
+
+        except Exception:
+            print(f"[ERROR] Gemini JSON parse failed: {title}")
+            data["source"] = "unknown"
+
+    # -------------------------
+    # ⑤ Song生成
+    # -------------------------
     song = Song(
         id=song_id,
         title=title,
@@ -70,15 +120,15 @@ def search_song(title: str, song_id: str) -> Song:
         album=data.get("album", ""),
         series=data.get("series", ""),
         unit=data.get("unit", ""),
-        source=data.get("source", "Wikipedia/Gemini"),
+        source=data.get("source", ""),
         source_url=data.get("source_url", ""),
         confidence=data.get("confidence", "unknown"),
         status="done"
     )
 
-    # -----------------------------
-    # ④ DB保存
-    # -----------------------------
+    # -------------------------
+    # ⑥ DB保存
+    # -------------------------
     save_song(song)
 
     return song

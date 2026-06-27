@@ -1,9 +1,9 @@
 import streamlit as st
 
 from db import get_all_songs, search_song_db
-st.write("APP START")
-st.write("TAB定義前")
-tab1, tab2 = st.tabs(["A", "B"])
+st.write("Aikatsu Song DB")
+st.write("アイカツ関連楽曲調べるマン")
+tab1, tab2 = st.tabs(["🔍 検索・一覧", "📤 CSV・追加・管理"])
 st.write("TAB定義後")
 with tab1:
     st.subheader("📚 楽曲一覧")
