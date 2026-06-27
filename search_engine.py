@@ -4,26 +4,30 @@ from db import get_song_by_title, add_song
 
 import json
 import requests
-
 import re
 import unicodedata
 
+
+# =========================
+# 正規化
+# =========================
 def normalize(text):
     if not text:
         return ""
 
-    text = str(text)   # ★これ重要（NaN対策）
+    text = str(text)  # NaN対策
     text = unicodedata.normalize("NFKC", text)
     text = text.lower()
     text = re.sub(r"[！!？?☆★・ー\-_\s　]", "", text)
 
     return text
+
+
 # =========================
-# Wikipedia検索（安定版）
+# Wikipedia検索
 # =========================
 def search_wikipedia(title: str):
     try:
-        # 検索API（summary直叩きより安定）
         search_url = "https://ja.wikipedia.org/w/api.php"
 
         params = {
@@ -44,7 +48,6 @@ def search_wikipedia(title: str):
 
         page_title = data["query"]["search"][0]["title"]
 
-        # summary取得
         summary_url = f"https://ja.wikipedia.org/api/rest_v1/page/summary/{page_title}"
         res2 = requests.get(summary_url, timeout=5)
 
@@ -78,12 +81,7 @@ def search_song(title: str, song_id: str) -> Song:
     norm_title = normalize(title)
 
     # -------------------------
-    # 0. 正規化（重要）
-    # -------------------------
-
-
-    # -------------------------
-    # 1. DBキャッシュ（安定版）
+    # 1. DBキャッシュ
     # -------------------------
     cached = get_song_by_title(norm_title)
 
@@ -107,7 +105,7 @@ def search_song(title: str, song_id: str) -> Song:
         )
 
     # -------------------------
-    # 2. 初期安全データ
+    # 2. 初期データ
     # -------------------------
     data = {
         "release_date": "",
@@ -121,13 +119,7 @@ def search_song(title: str, song_id: str) -> Song:
         "source_url": "",
         "confidence": "unknown"
     }
-# -------------------------
-# CSVデータ優先反映（重要）
-# -------------------------
-if csv_data:
-    for k, v in csv_data.items():
-        if v:
-            data[k] = v
+
     # -------------------------
     # 3. Wikipedia
     # -------------------------
@@ -139,7 +131,7 @@ if csv_data:
         data["source"] = "Wikipedia"
 
     # -------------------------
-    # 4. Gemini（最終手段）
+    # 4. Gemini
     # -------------------------
     else:
         print(f"[GEMINI CALL] {title}")
@@ -155,47 +147,31 @@ if csv_data:
 
         except Exception as e:
             print(f"[GEMINI ERROR] {e}")
-
-            # ★完全フォールバック（絶対落とさない）
             data["source"] = "unknown"
             data["confidence"] = "low"
 
     # -------------------------
     # 5. Song生成
     # -------------------------
-    song_dict = {
-        "id": song_id,
-        "title": title,
-        "release_date": data.get("release_date", ""),
-        "composer": data.get("composer", ""),
-        "lyricist": data.get("lyricist", ""),
-        "arranger": data.get("arranger", ""),
-        "album": data.get("album", ""),
-        "series": data.get("series", ""),
-        "unit": data.get("unit", ""),
-        "source": data.get("source", ""),
-        "source_url": data.get("source_url", ""),
-        "confidence": data.get("confidence", "unknown"),
-        "status": "done"
-    }
+    song = Song(
+        id=song_id,
+        title=title,
+        release_date=data.get("release_date", ""),
+        composer=data.get("composer", ""),
+        lyricist=data.get("lyricist", ""),
+        arranger=data.get("arranger", ""),
+        album=data.get("album", ""),
+        series=data.get("series", ""),
+        unit=data.get("unit", ""),
+        source=data.get("source", ""),
+        source_url=data.get("source_url", ""),
+        confidence=data.get("confidence", "unknown"),
+        status="done"
+    )
 
-add_song(song_dict)
     # -------------------------
-    # 6. DB保存（必ず成功）
+    # 6. DB保存（1回だけ）
     # -------------------------
-    add_song({
-        "id": song.id,
-        "title": song.title,
-        "release_date": song.release_date,
-        "composer": song.composer,
-        "lyricist": song.lyricist,
-        "arranger": song.arranger,
-        "album": song.album,
-        "series": song.series,
-        "unit": song.unit,
-        "source": song.source,
-        "source_url": song.source_url,
-        "confidence": song.confidence,
-        "status": song.status
-    })
+    add_song(song.__dict__)
+
     return song
