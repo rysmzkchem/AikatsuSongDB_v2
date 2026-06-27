@@ -241,28 +241,31 @@ with tab2:
 
     with st.form("add_song"):
         title = st.text_input("曲名")
-
         submitted = st.form_submit_button("追加")
 
-        if submitted:
-            from search_engine import search_song
+    if submitted:
+        from search_engine import search_song
 
-            title = title.strip()
+        title = title.strip()
 
-            if not title:
-                st.error("曲名を入力してください")
-                st.stop()
+        if not title:
+            st.error("曲名を入力してください")
+            st.stop()
 
-            if get_song_by_title(title):
-                st.info("すでにDBに登録されています")
-                st.stop()
+        if get_song_by_title(title):
+            st.info("すでにDBに登録されています")
+            st.stop()
 
-            song_id = f"manual_{title}"
+        song_id = f"manual_{title}"
 
-            with st.spinner(f"🔍 {title} を検索中..."):
-                result = search_song(title, song_id)
+        status = st.empty()
 
-            st.success("追加完了（自動補完）")
+        try:
+            status.write(f"🔍 検索中: {title}")
+
+            result = search_song(title, song_id)
+
+            status.success("検索・登録完了")
 
             st.write("取得結果")
             st.json({
@@ -270,7 +273,19 @@ with tab2:
                 "release_date": result.release_date,
                 "composer": result.composer,
                 "lyricist": result.lyricist,
+                "arranger": result.arranger,
+                "album": result.album,
+                "series": result.series,
+                "unit": result.unit,
+                "source": result.source,
+                "confidence": result.confidence,
             })
+
+            st.success("追加完了しました。ページを更新すると一覧に反映されます。")
+
+        except Exception as e:
+            status.error(f"エラー: {e}")
+            st.exception(e)
             st.divider()
             
 st.subheader("⚠️ DBリセット")
