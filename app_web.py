@@ -188,3 +188,16 @@ with tab2:
 
             st.success("追加完了（自動補完）")
             st.rerun()
+            st.divider()
+st.subheader("⚠️ DBリセット")
+
+if st.button("DBを全削除して初期化"):
+    import os
+    from db import init_db
+
+    if os.path.exists("aikatsu.db"):
+        os.remove("aikatsu.db")
+
+    init_db()
+    st.success("DBをリセットしました")
+    st.rerun()
