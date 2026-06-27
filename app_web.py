@@ -99,7 +99,7 @@ with tab1:
             st.subheader(row["title"])
             st.write(row["release_date"])
             st.write(f"{row['album']} / {row['series']} / {row['unit']}")
-             with st.expander("✏️ 編集"):
+            with st.expander("✏️ 編集"):
             new_release_date = st.text_input(
                 "リリース日",
                 row["release_date"],
