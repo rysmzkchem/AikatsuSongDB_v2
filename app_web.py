@@ -1,8 +1,6 @@
-init_db()
-
 import streamlit as st
+from db import init_db, get_all_songs, search_song_db
 
-from db import get_all_songs, search_song_db
 st.write("Aikatsu Song DB")
 st.write("アイカツ関連楽曲調べるマン")
 tab1, tab2 = st.tabs(["🔍 検索・一覧", "📤 CSV・追加・管理"])
@@ -114,8 +112,12 @@ with tab2:
             count = 0
 
             for i, row in df.iterrows():
-                title = row["title"]
+                title = row.get("title") or row.get("Title")
                 song_id = f"csv_{i}_{title}"
+
+                # ★DBキャッシュ（ここ！）
+                if get_song_by_title(title):
+                    continue
 
                 search_song(title, song_id)
                 count += 1
