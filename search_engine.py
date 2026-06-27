@@ -1,6 +1,6 @@
 from gemini_client import get_song_info
 from models import Song
-from db import get_song_by_title, add_song
+from db import get_song_by_title, add_song, save_song
 import json
 import requests
 
@@ -172,6 +172,6 @@ def search_song(title: str, song_id: str) -> Song:
     # -------------------------
     # 6. DB保存（必ず成功）
     # -------------------------
-    save_song(song)
+    add_song(song.__dict__)
 
     return song
