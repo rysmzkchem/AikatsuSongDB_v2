@@ -57,7 +57,7 @@ def search_aikatsu_wiki(title: str):
             "series": "アイカツ！",
             "unit": "",
             "source_url": res.url,
-            "confidence": "medium"
+            "confidence": ""
         }
 
     except Exception as e:
