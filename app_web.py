@@ -1,8 +1,9 @@
 import streamlit as st
 from db import init_db, get_all_songs, search_song_db, get_song_by_title
-init_db()
 
-st.write("Aikatsu Song DB")
+init_db()  # ← OKだが1回だけ
+
+st.set_page_config(page_title="Aikatsu Song DB")
 st.write("アイカツ関連楽曲調べるマン")
 tab1, tab2 = st.tabs(["🔍 検索・一覧", "📤 CSV・追加・管理"])
 st.write("TAB定義後")
@@ -114,9 +115,12 @@ with tab2:
 
             for i, row in df.iterrows():
                 title = row.get("title") or row.get("Title")
-                if not title:
+
+                if not title or str(title) == "nan":
                     continue
-                song_id = f"csv_{i}"
+
+                if get_song_by_title(title):
+                    continue
 
                 # ★DBキャッシュ（ここ！）
                 if get_song_by_title(normalize(title)):
