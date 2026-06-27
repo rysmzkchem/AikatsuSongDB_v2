@@ -37,6 +37,9 @@ def init_db():
     conn = get_connection()
     cur = conn.cursor()
 
+    # -------------------------
+    # テーブル作成
+    # -------------------------
     cur.execute("""
     CREATE TABLE IF NOT EXISTS songs (
         id TEXT PRIMARY KEY,
@@ -55,13 +58,22 @@ def init_db():
     )
     """)
 
-    # カラム存在チェック
+    # -------------------------
+    # カラム確認
+    # -------------------------
     cur.execute("PRAGMA table_info(songs)")
     columns = [c[1] for c in cur.fetchall()]
 
+    # -------------------------
+    # カラム追加
+    # -------------------------
     if "title_norm" not in columns:
         cur.execute("ALTER TABLE songs ADD COLUMN title_norm TEXT")
 
+        # ★重要：一旦commit
+        conn.commit()
+
+        # 再取得（別クエリで安全化）
         cur.execute("SELECT id, title FROM songs")
         rows = cur.fetchall()
 
