@@ -157,7 +157,9 @@ def search_song(title: str, song_id: str) -> Song:
         print(f"[GEMINI SKIP] {title} / no missing fields", flush=True)
 
     print(f"[FINAL DATA] {title}: {data}", flush=True)
-
+    if data.get("source") == "Gemini" and has_missing_required(data):
+        print(f"[SKIP SAVE] Gemini failed or incomplete: {title}", flush=True)
+        raise Exception("Gemini補完に失敗したためDB保存をスキップしました")
     song = Song(
         id=song_id,
         title=title,
