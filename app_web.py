@@ -184,11 +184,19 @@ with tab2:
 
             song_id = f"manual_{title}"
 
-            search_song(title, song_id)
+            with st.spinner(f"🔍 {title} を検索中..."):
+                result = search_song(title, song_id)
 
             st.success("追加完了（自動補完）")
-            st.rerun()
+
+            st.write("取得結果")
+            st.json({
+                "title": result.title,
+                "release_date": result.release_date,
+                "composer": result.composer,
+                "lyricist
             st.divider()
+            
 st.subheader("⚠️ DBリセット")
 
 if st.button("DBを全削除して初期化"):
