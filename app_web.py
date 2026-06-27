@@ -104,7 +104,6 @@ with tab2:
         from search_engine import search_song
 
         df = pd.read_csv(uploaded_file)
-
         st.write("プレビュー")
         st.dataframe(df.head())
 
