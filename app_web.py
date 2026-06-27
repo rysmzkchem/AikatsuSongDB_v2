@@ -1,3 +1,5 @@
+init_db()
+
 import streamlit as st
 
 from db import get_all_songs, search_song_db
