@@ -104,6 +104,7 @@ with tab2:
 
     if uploaded_file is not None:
         import pandas as pd
+        from search_engine import search_song
 
         df = pd.read_csv(uploaded_file)
 
@@ -116,86 +117,51 @@ with tab2:
 
         st.write("CSV読み込み成功")
 
-       if st.button("CSVを自動補完してDB登録"):
-        from search_engine import search_song
+        if st.button("CSVを自動補完してDB登録"):
+            count = 0
+            skipped = 0
+            errors = 0
 
-        count = 0
-        skipped = 0
-        errors = 0
+            status_area = st.empty()
+            progress = st.progress(0)
 
-        status_area = st.empty()
-        progress = st.progress(0)
+            for i, row in df.iterrows():
+                title = str(row.get("title", "")).strip()
 
-        for i, row in df.iterrows():
-            title = str(row.get("title", "")).strip()
+                if not title:
+                    skipped += 1
+                    continue
 
-            if not title:
-                skipped += 1
-                continue
+                if get_song_by_title(title):
+                    skipped += 1
+                    status_area.info(f"⏭ スキップ済み: {title}")
+                    continue
 
-            if get_song_by_title(title):
-                skipped += 1
-                status_area.info(f"⏭ スキップ済み: {title}")
-                continue
+                song_id = f"csv_{i}_{title}"
 
-            song_id = f"csv_{i}_{title}"
+                try:
+                    status_area.write(f"🔍 検索中: {title}")
 
-            try:
-                status_area.write(f"🔍 検索中: {title}")
+                    result = search_song(title, song_id)
 
-                result = search_song(title, song_id)
+                    status_area.success(
+                        f"✅ 完了: {title} / source={result.source} / confidence={result.confidence}"
+                    )
 
-                status_area.success(
-                    f"✅ 完了: {title} / source={result.source} / confidence={result.confidence}"
-                )
+                    count += 1
 
-                count += 1
+                except Exception as e:
+                    errors += 1
+                    status_area.error(f"❌ エラー: {title} / {e}")
+                    print(f"[APP ERROR] {title}: {e}")
 
-            except Exception as e:
-                errors += 1
-                status_area.error(f"❌ エラー: {title} / {e}")
-                print(f"[APP ERROR] {title}: {e}")
+                progress.progress((i + 1) / len(df))
 
-            progress.progress((i + 1) / len(df))
-
-        st.success(f"登録完了: {count}件 / スキップ {skipped}件 / エラー {errors}件")
-        st.rerun()
-
+            st.success(f"登録完了: {count}件 / スキップ {skipped}件 / エラー {errors}件")
+            st.rerun()
     st.divider()
 
-    st.subheader("📥 ローカルCSV")
-
-    if st.button("songs.csv取り込み"):
-        import pandas as pd
-        from search_engine import search_song
-
-        df = pd.read_csv("songs.csv")
-        df.columns = df.columns.str.strip().str.lower()
-        df = df.fillna("")
-
-        count = 0
-        skipped = 0
-
-        for i, row in df.iterrows():
-            title = str(row.get("title", "")).strip()
-
-            if not title:
-                skipped += 1
-                continue
-
-            if get_song_by_title(title):
-                skipped += 1
-                continue
-
-            song_id = f"import_{i}_{title}"
-
-            search_song(title, song_id)
-            count += 1
-
-        st.success(f"{count}件インポート / {skipped}件スキップ")
-
-    st.divider()
-
+    
     st.subheader("➕ 曲追加（自動補完）")
 
     with st.form("add_song"):
