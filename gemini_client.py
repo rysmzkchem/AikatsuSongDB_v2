@@ -12,7 +12,7 @@ from google.genai import types
 # API設定
 # =========================
 API_KEY = os.getenv("API_KEY")
-MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.0-flash")
+MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.5-flash")
 
 if not API_KEY:
     raise ValueError("API_KEY is missing. Streamlit Cloud の Secrets に API_KEY を設定してください。")
