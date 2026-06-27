@@ -79,15 +79,15 @@ def search_wikipedia(title: str):
 
 
 def search_song(title: str, song_id: str) -> Song:
-    print(f"[START] {title}")
+    print(f"[START] {title}", flush=True)
 
     norm_title = normalize(title)
-    print(f"[NORMALIZE] {title} -> {norm_title}")
+    print(f"[NORMALIZE] {title} -> {norm_title}", flush=True)
 
     cached = get_song_by_title(norm_title)
 
     if cached:
-        print(f"[DB HIT] {title}")
+        print(f"[DB HIT] {title}", flush=True)
         return Song(
             id=cached["id"],
             title=cached["title"],
@@ -104,7 +104,7 @@ def search_song(title: str, song_id: str) -> Song:
             status=cached["status"]
         )
 
-    print(f"[DB MISS] {title}")
+    print(f"[DB MISS] {title}", flush=True)
 
     data = {
         "release_date": "",
@@ -119,25 +119,25 @@ def search_song(title: str, song_id: str) -> Song:
         "confidence": "unknown"
     }
 
-    print(f"[WIKI START] {title}")
+    print(f"[WIKI START] {title}", flush=True)
     wiki_data = search_wikipedia(title)
 
     if wiki_data:
-        print(f"[WIKI HIT] {title}: {wiki_data}")
+        print(f"[WIKI HIT] {title}: {wiki_data}", flush=True)
         merge_if_empty(data, wiki_data)
         data["source"] = "Wikipedia"
     else:
-        print(f"[WIKI MISS] {title}")
+        print(f"[WIKI MISS] {title}", flush=True)
 
     if has_missing_required(data):
-        print(f"[GEMINI START] {title}")
+        print(f"[GEMINI START] {title}", flush=True)
 
         try:
             raw = get_song_info(title)
-            print(f"[GEMINI RAW] {title}: {raw}")
+            print(f"[GEMINI RAW] {title}: {raw}", flush=True)
 
             gemini_data = json.loads(raw)
-            print(f"[GEMINI DATA] {title}: {gemini_data}")
+            print(f"[GEMINI DATA] {title}: {gemini_data}", flush=True)
 
             if isinstance(gemini_data, dict):
                 merge_if_empty(data, gemini_data)
@@ -148,15 +148,15 @@ def search_song(title: str, song_id: str) -> Song:
                 data["source"] = "Gemini"
 
         except Exception as e:
-            print(f"[GEMINI ERROR] {title}: {e}")
+            print(f"[GEMINI ERROR] {title}: {e}", flush=True)
             if not data.get("source"):
                 data["source"] = "unknown"
             data["confidence"] = data.get("confidence") or "low"
 
     else:
-        print(f"[GEMINI SKIP] {title} / no missing fields")
+        print(f"[GEMINI SKIP] {title} / no missing fields", flush=True)
 
-    print(f"[FINAL DATA] {title}: {data}")
+    print(f"[FINAL DATA] {title}: {data}", flush=True)
 
     song = Song(
         id=song_id,
@@ -174,8 +174,14 @@ def search_song(title: str, song_id: str) -> Song:
         status="done"
     )
 
-    print(f"[SAVE START] {title}")
-    add_song(song.__dict__)
-    print(f"[SAVE DONE] {title}")
+    print(f"[SAVE START] {title}", flush=True)
+
+    try:
+        add_song(song.__dict__)
+        print(f"[SAVE DONE] {title}", flush=True)
+
+    except Exception as e:
+        print(f"[SAVE ERROR] {title}: {e}", flush=True)
+        raise
 
     return song
