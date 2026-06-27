@@ -5,21 +5,23 @@ DB_NAME = "aikatsu.db"
 import re
 import unicodedata
 
-def normalize(text):
-    if not text:
+def normalize(text) -> str:
+    if text is None:
         return ""
 
-    try:
-        text = str(text)
-    except:
+    text = str(text)
+
+    if text == "nan":
         return ""
+
+    import unicodedata
+    import re
 
     text = unicodedata.normalize("NFKC", text)
     text = text.lower()
     text = re.sub(r"[！!？?☆★・ー\-_\s　]", "", text)
 
     return text
-import sqlite3
 # =========================
 # 接続
 # =========================
