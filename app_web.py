@@ -135,8 +135,9 @@ with tab2:
                     continue
 
                 song_id = f"csv_{i}_{title}"
-
-                search_song(title, song_id)
+                with st.spinner(f"🔍 {title} を検索中..."):
+                    search_song(title, song_id)
+                    
                 count += 1
 
             st.success(f"{count}件登録しました / {skipped}件スキップしました")
