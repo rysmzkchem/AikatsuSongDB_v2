@@ -1,6 +1,7 @@
 from gemini_client import get_song_info
 from models import Song
-from db import get_song_by_title, add_song, save_song
+from db import get_song_by_title, add_song
+
 import json
 import requests
 
