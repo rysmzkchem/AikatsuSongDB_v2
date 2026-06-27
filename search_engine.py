@@ -4,7 +4,18 @@ from db import get_song_by_title, add_song
 import json
 import requests
 
+import re
+import unicodedata
 
+def normalize(text: str) -> str:
+    if not text:
+        return ""
+
+    text = unicodedata.normalize("NFKC", text)
+    text = text.lower()
+    text = re.sub(r"[！!？?☆★・ー\-_\s　]", "", text)
+
+    return text
 # =========================
 # Wikipedia検索（安定版）
 # =========================
