@@ -62,6 +62,16 @@ def init_db():
     if "title_norm" not in columns:
         cur.execute("ALTER TABLE songs ADD COLUMN title_norm TEXT")
 
+        cur.execute("SELECT id, title FROM songs")
+        rows = cur.fetchall()
+
+        for r in rows:
+            cur.execute("""
+            UPDATE songs
+            SET title_norm = ?
+            WHERE id = ?
+            """, (normalize(r["title"]), r["id"]))
+
     conn.commit()
     conn.close()
 
@@ -108,10 +118,12 @@ def get_song_by_title(title):
     conn = get_connection()
     cur = conn.cursor()
 
+    norm = normalize(title)
+
     cur.execute("""
     SELECT * FROM songs
     WHERE title_norm = ?
-    """, (normalize(title),))
+    """, (norm,))
 
     row = cur.fetchone()
     conn.close()
@@ -131,22 +143,7 @@ def search_song_db(keyword):
     conn.close()
 
     return rows
-#存在チェック
-def get_song_by_title(title):
-    conn = get_connection()
-    cur = conn.cursor()
 
-    cur.execute("SELECT * FROM songs")
-    rows = cur.fetchall()
-
-    for r in rows:
-        if normalize(title) == normalize(r["title"]):
-            conn.close()
-            return r
-
-    conn.close()
-    return None
-    
 # =========================
 # 更新
 # =========================
