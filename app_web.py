@@ -1,3 +1,4 @@
+import streamlit as st
 st.write("APP START")
 st.write("TAB定義前")
 tab1, tab2 = st.tabs(["A", "B"])
