@@ -1,6 +1,6 @@
 from gemini_client import get_song_info
 from models import Song
-from db import get_song_by_title, save_song, normalize
+from db import get_song_by_title, save_song
 import json
 import requests
 
