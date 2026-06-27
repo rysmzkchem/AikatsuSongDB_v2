@@ -1,5 +1,5 @@
 import streamlit as st
-from db import init_db, get_all_songs, search_song_db
+from db import init_db, get_all_songs, search_song_db, get_song_by_title
 init_db()
 
 st.write("Aikatsu Song DB")
