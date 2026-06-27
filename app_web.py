@@ -1,12 +1,26 @@
 import streamlit as st
-from db import init_db, get_all_songs, search_song_db, get_song_by_title
+from db import (
+    init_db,
+    get_all_songs,
+    search_song_db,
+    get_song_by_title,
+    normalize
+)
 
-init_db()  # ← OKだが1回だけ
+from search_engine import search_song
+
+init_db()
 
 st.set_page_config(page_title="Aikatsu Song DB")
 st.write("アイカツ関連楽曲調べるマン")
+
 tab1, tab2 = st.tabs(["🔍 検索・一覧", "📤 CSV・追加・管理"])
 st.write("TAB定義後")
+
+
+# =========================
+# TAB1
+# =========================
 with tab1:
     st.subheader("📚 楽曲一覧")
 
@@ -16,7 +30,6 @@ with tab1:
         st.success(st.session_state["msg"])
         del st.session_state["msg"]
 
-    # 検索
     partial_search = st.checkbox("🔍 部分一致検索", value=True)
     keyword = st.text_input("🔍 検索")
 
@@ -26,7 +39,6 @@ with tab1:
         else:
             rows = [r for r in rows if keyword.lower() == r["title"].lower()]
 
-    # フィルター候補（検索後じゃなく全体から作るのが安全）
     all_rows = get_all_songs()
 
     series_list = sorted(set(r["series"] for r in all_rows if r["series"]))
@@ -44,7 +56,6 @@ with tab1:
         lyricist_filter = st.multiselect("作詞者", lyricist_list)
         album_filter = st.multiselect("アルバム", album_list)
 
-    # フィルター
     filtered = []
     for r in rows:
         if series_filter and r["series"] not in series_filter:
@@ -61,17 +72,12 @@ with tab1:
 
     rows = filtered
 
-    # ソート
     sort_option = st.selectbox(
         "並び順",
         ["リリース日（新しい順）", "リリース日（古い順）", "曲名（A→Z）", "曲名（Z→A）"]
     )
 
-    if sort_option == "リリース日（新しい順）":
-        rows = sorted(rows, key=lambda x: x["release_date"], reverse=True)
-    elif sort_option == "リリース日（古い順）":
-        rows = sorted(rows, key=lambda x: x["release_date"])
-    elif sort_option == "曲名（A→Z）":
+    if sort_option == "曲名（A→Z）":
         rows = sorted(rows, key=lambda x: x["title"])
     elif sort_option == "曲名（Z→A）":
         rows = sorted(rows, key=lambda x: x["title"], reverse=True)
@@ -83,17 +89,14 @@ with tab1:
             st.subheader(row["title"])
             st.write(row["release_date"])
             st.write(f"{row['album']} / {row['series']} / {row['unit']}")
+
+
 # =========================
 # TAB2
 # =========================
 with tab2:
     st.subheader("🛠 管理・CSV登録")
 
-    #st.write("TAB2 is alive")  # ← デバッグ用（重要）
-
-    # =========================
-    # CSVアップロード
-    # =========================
     uploaded_file = st.file_uploader(
         "CSVファイルを選択してください",
         type=["csv"]
@@ -101,9 +104,9 @@ with tab2:
 
     if uploaded_file is not None:
         import pandas as pd
-        from search_engine import search_song
 
         df = pd.read_csv(uploaded_file)
+
         st.write("プレビュー")
         st.dataframe(df.head())
 
@@ -118,12 +121,11 @@ with tab2:
                 if not title or str(title) == "nan":
                     continue
 
+                # ★DBキャッシュ（これだけでOK）
                 if get_song_by_title(title):
                     continue
 
-                # ★DBキャッシュ（ここ！）
-                if get_song_by_title(normalize(title)):
-                    continue
+                song_id = f"csv_{i}_{title}"
 
                 search_song(title, song_id)
                 count += 1
@@ -133,14 +135,10 @@ with tab2:
 
     st.divider()
 
-    # =========================
-    # ローカルCSV
-    # =========================
     st.subheader("📥 ローカルCSV")
 
     if st.button("songs.csv取り込み"):
         import pandas as pd
-        from search_engine import search_song, normalize
 
         df = pd.read_csv("songs.csv")
 
@@ -157,9 +155,6 @@ with tab2:
 
     st.divider()
 
-    # =========================
-    # 手動追加
-    # =========================
     st.subheader("➕ 曲追加（自動補完）")
 
     with st.form("add_song"):
@@ -169,8 +164,6 @@ with tab2:
         submitted = st.form_submit_button("追加")
 
         if submitted:
-            from search_engine import search_song
-
             song_id = f"manual_{title}"
 
             search_song(title, song_id)

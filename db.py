@@ -1,11 +1,83 @@
-
-
 DB_NAME = "aikatsu.db"
 
 import re
 import unicodedata
 import sqlite3
 
+
+# =========================
+# 正規化
+# =========================
+def normalize(text):
+    if not text:
+        return ""
+
+    text = str(text)
+    text = unicodedata.normalize("NFKC", text)
+    text = text.lower()
+    text = re.sub(r"[！!？?☆★・ー\-_\s　]", "", text)
+
+    return text
+
+
+# =========================
+# 接続
+# =========================
+def get_connection():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+# =========================
+# 初期化
+# =========================
+def init_db():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS songs (
+        id TEXT PRIMARY KEY,
+        title TEXT,
+        release_date TEXT,
+        composer TEXT,
+        lyricist TEXT,
+        arranger TEXT,
+        album TEXT,
+        series TEXT,
+        unit TEXT,
+        source TEXT,
+        source_url TEXT,
+        confidence TEXT,
+        status TEXT
+    )
+    """)
+
+    cur.execute("PRAGMA table_info(songs)")
+    columns = [c[1] for c in cur.fetchall()]
+
+    if "title_norm" not in columns:
+        cur.execute("ALTER TABLE songs ADD COLUMN title_norm TEXT")
+        conn.commit()
+
+        cur.execute("SELECT id, title FROM songs")
+        rows = cur.fetchall()
+
+        for r in rows:
+            cur.execute("""
+                UPDATE songs
+                SET title_norm = ?
+                WHERE id = ?
+            """, (normalize(r["title"]), r["id"]))
+
+    conn.commit()
+    conn.close()
+
+
+# =========================
+# 追加
+# =========================
 def add_song(song: dict):
     conn = get_connection()
     cur = conn.cursor()
@@ -27,97 +99,6 @@ def add_song(song: dict):
     conn.commit()
     conn.close()
 
-# =========================
-# 接続
-# =========================
-def get_connection():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-# =========================
-# 初期化
-# =========================
-def init_db():
-    conn = get_connection()
-    cur = conn.cursor()
-
-    # -------------------------
-    # テーブル作成
-    # -------------------------
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS songs (
-        id TEXT PRIMARY KEY,
-        title TEXT,
-        release_date TEXT,
-        composer TEXT,
-        lyricist TEXT,
-        arranger TEXT,
-        album TEXT,
-        series TEXT,
-        unit TEXT,
-        source TEXT,
-        source_url TEXT,
-        confidence TEXT,
-        status TEXT
-    )
-    """)
-
-    # -------------------------
-    # カラム確認
-    # -------------------------
-    cur.execute("PRAGMA table_info(songs)")
-    columns = [c[1] for c in cur.fetchall()]
-
-    # -------------------------
-    # カラム追加
-    # -------------------------
-    if "title_norm" not in columns:
-        cur.execute("ALTER TABLE songs ADD COLUMN title_norm TEXT")
-
-        # ★重要：一旦commit
-        conn.commit()
-
-        # 再取得（別クエリで安全化）
-        cur.execute("SELECT id, title FROM songs")
-        rows = cur.fetchall()
-
-        for r in rows:
-            cur.execute("""
-            UPDATE songs
-            SET title_norm = ?
-            WHERE id = ?
-            """, (normalize(r["title"]), r["id"]))
-
-    conn.commit()
-    conn.close()
-
-
-# =========================
-# 追加
-# =========================
-def add_song(song):
-    conn = get_connection()
-    cur = conn.cursor()
-
-    song["title_norm"] = normalize(song["title"])
-
-    cur.execute("""
-    INSERT INTO songs (
-        id, title, release_date, composer, lyricist,
-        arranger, album, series, unit,
-        source, source_url, confidence, status, title_norm
-    )
-    VALUES (
-        :id, :title, :release_date, :composer, :lyricist,
-        :arranger, :album, :series, :unit,
-        :source, :source_url, :confidence, :status, :title_norm
-    )
-    """, song)
-
-    conn.commit()
-    conn.close()
 
 # =========================
 # 全件取得
@@ -134,7 +115,7 @@ def get_all_songs():
 
 
 # =========================
-# 検索
+# 検索（完全一致）
 # =========================
 def get_song_by_title(title):
     conn = get_connection()
@@ -149,6 +130,11 @@ def get_song_by_title(title):
     conn.close()
 
     return row
+
+
+# =========================
+# 検索（部分一致）
+# =========================
 def search_song_db(keyword):
     conn = get_connection()
     cur = conn.cursor()
@@ -164,6 +150,7 @@ def search_song_db(keyword):
     conn.close()
 
     return rows
+
 
 # =========================
 # 更新
@@ -219,8 +206,9 @@ def delete_song(song_id):
     conn.commit()
     conn.close()
 
+
 # =========================
-# 既存データ正規化更新（←ここに追加）
+# 正規化再生成
 # =========================
 def update_all_title_norm():
     conn = get_connection()
