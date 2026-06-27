@@ -98,16 +98,20 @@ def add_song(song):
     song["title_norm"] = normalize(song["title"])
 
     cur.execute("""
-    INSERT INTO songs VALUES (
+    INSERT INTO songs (
+        id, title, release_date, composer, lyricist,
+        arranger, album, series, unit,
+        source, source_url, confidence, status, title_norm
+    )
+    VALUES (
         :id, :title, :release_date, :composer, :lyricist,
         :arranger, :album, :series, :unit,
-        :source, :source_url, :confidence, :status
+        :source, :source_url, :confidence, :status, :title_norm
     )
     """, song)
 
     conn.commit()
     conn.close()
-
 
 # =========================
 # 全件取得
