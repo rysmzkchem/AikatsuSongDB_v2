@@ -140,15 +140,14 @@ def get_song_by_title(title):
     conn = get_connection()
     cur = conn.cursor()
 
-    norm = normalize(title)
-
     cur.execute("""
     SELECT * FROM songs
     WHERE title_norm = ?
-    """, (norm,))
+    """, (normalize(title),))
 
     row = cur.fetchone()
     conn.close()
+
     return row
 def search_song_db(keyword):
     conn = get_connection()

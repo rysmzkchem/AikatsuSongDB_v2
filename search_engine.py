@@ -8,10 +8,11 @@ import requests
 import re
 import unicodedata
 
-def normalize(text: str) -> str:
+def normalize(text):
     if not text:
         return ""
 
+    text = str(text)   # ★これ重要（NaN対策）
     text = unicodedata.normalize("NFKC", text)
     text = text.lower()
     text = re.sub(r"[！!？?☆★・ー\-_\s　]", "", text)
@@ -72,11 +73,14 @@ def search_wikipedia(title: str):
 # =========================
 # メイン検索
 # =========================
-def search_song(title: str, song_id: str, csv_data: dict = None) -> Song:
+def search_song(title: str, song_id: str) -> Song:
+
+    norm_title = normalize(title)
+
     # -------------------------
     # 0. 正規化（重要）
     # -------------------------
-    norm_title = normalize(title)
+
 
     # -------------------------
     # 1. DBキャッシュ（安定版）
@@ -159,22 +163,23 @@ if csv_data:
     # -------------------------
     # 5. Song生成
     # -------------------------
-    song = Song(
-        id=song_id,
-        title=title,
-        release_date=data.get("release_date", ""),
-        composer=data.get("composer", ""),
-        lyricist=data.get("lyricist", ""),
-        arranger=data.get("arranger", ""),
-        album=data.get("album", ""),
-        series=data.get("series", ""),
-        unit=data.get("unit", ""),
-        source=data.get("source", ""),
-        source_url=data.get("source_url", ""),
-        confidence=data.get("confidence", "unknown"),
-        status="done"
-    )
+    song_dict = {
+        "id": song_id,
+        "title": title,
+        "release_date": data.get("release_date", ""),
+        "composer": data.get("composer", ""),
+        "lyricist": data.get("lyricist", ""),
+        "arranger": data.get("arranger", ""),
+        "album": data.get("album", ""),
+        "series": data.get("series", ""),
+        "unit": data.get("unit", ""),
+        "source": data.get("source", ""),
+        "source_url": data.get("source_url", ""),
+        "confidence": data.get("confidence", "unknown"),
+        "status": "done"
+    }
 
+add_song(song_dict)
     # -------------------------
     # 6. DB保存（必ず成功）
     # -------------------------
