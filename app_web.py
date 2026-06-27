@@ -87,7 +87,7 @@ with tab1:
 with tab2:
     st.subheader("🛠 管理・CSV登録")
 
-    st.write("TAB2 is alive")  # ← デバッグ用（重要）
+    #st.write("TAB2 is alive")  # ← デバッグ用（重要）
 
     # =========================
     # CSVアップロード
