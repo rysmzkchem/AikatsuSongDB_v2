@@ -1,10 +1,22 @@
+import os
 from google import genai
 from google.genai import types
 from pathlib import Path
 import json
 import traceback
 
-from config import API_KEY, MODEL_NAME
+# =========================
+# Streamlit Secrets対応
+# =========================
+API_KEY = os.getenv("API_KEY")
+MODEL_NAME = os.getenv("MODEL_NAME", "gemini-1.5-flash")
+
+if not API_KEY:
+    raise ValueError("API_KEY is missing (Streamlit Secretsを設定してください)")
+
+client = genai.Client(api_key=API_KEY)
+
+PROMPT_PATH = Path("prompts/song_prompt.txt")
 
 # =========================
 # クライアント初期化
