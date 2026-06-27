@@ -114,10 +114,12 @@ with tab2:
 
             for i, row in df.iterrows():
                 title = row.get("title") or row.get("Title")
-                song_id = f"csv_{i}_{title}"
+                if not title:
+                    continue
+                song_id = f"csv_{i}"
 
                 # ★DBキャッシュ（ここ！）
-                if get_song_by_title(title):
+                if get_song_by_title(normalize(title)):
                     continue
 
                 search_song(title, song_id)
@@ -135,7 +137,7 @@ with tab2:
 
     if st.button("songs.csv取り込み"):
         import pandas as pd
-        from search_engine import search_song
+        from search_engine import search_song, normalize
 
         df = pd.read_csv("songs.csv")
 
