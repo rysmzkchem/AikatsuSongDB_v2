@@ -20,63 +20,112 @@ def normalize(text):
     return text
 
 
-def has_missing_required(data):
-    required = ["release_date", "composer", "lyricist", "arranger", "album", "series", "unit"]
-    return any(not data.get(k) for k in required)
-
-
 def merge_if_empty(base: dict, new: dict):
     for k, v in new.items():
         if not base.get(k) and v:
             base[k] = v
 
 
-def search_wikipedia(title: str):
+def has_missing_required(data):
+    required = ["release_date", "composer", "lyricist", "arranger", "album", "series", "unit"]
+    return any(not data.get(k) for k in required)
+
+def search_aikatsu_wiki(title: str):
     try:
-        search_url = "https://ja.wikipedia.org/w/api.php"
+        search_url = "https://aikatsu.fandom.com/ja/wiki/Special:Search"
 
         params = {
-            "action": "query",
-            "list": "search",
-            "srsearch": title,
-            "format": "json"
+            "query": title
         }
 
         res = requests.get(search_url, params=params, timeout=5)
+
         if res.status_code != 200:
             return None
 
-        data = res.json()
+        text = res.text
 
-        if not data.get("query", {}).get("search"):
+        if title not in text:
             return None
-
-        page_title = data["query"]["search"][0]["title"]
-
-        summary_url = f"https://ja.wikipedia.org/api/rest_v1/page/summary/{page_title}"
-        res2 = requests.get(summary_url, timeout=5)
-
-        if res2.status_code != 200:
-            return None
-
-        page = res2.json()
 
         return {
             "release_date": "",
             "composer": "",
             "lyricist": "",
             "arranger": "",
-            "album": page.get("title", ""),
-            "series": "",
+            "album": "",
+            "series": "アイカツ！",
             "unit": "",
-            "source_url": page.get("content_urls", {}).get("desktop", {}).get("page", ""),
-            "confidence": "low"
+            "source_url": res.url,
+            "confidence": "medium"
         }
 
     except Exception as e:
-        print(f"[WIKI ERROR] {e}")
+        print(f"[AIKATSU WIKI ERROR] {title}: {e}", flush=True)
         return None
+    
+def search_wikipedia_aikatsu(title: str):
+    queries = [
+        f"{title} アイカツ",
+        f"{title} アイカツ!",
+        f"{title} アイカツスターズ",
+        f"{title} アイカツプラネット",
+        f"{title} アイカツフレンズ",
+        f"{title} フォト on ステージ",
+        f"{title} アイカツオンパレード",
+        f"{title} アイカツアカデミー",
+    ]
 
+    for q in queries:
+        try:
+            search_url = "https://ja.wikipedia.org/w/api.php"
+
+            params = {
+                "action": "query",
+                "list": "search",
+                "srsearch": q,
+                "format": "json"
+            }
+
+            res = requests.get(search_url, params=params, timeout=5)
+            if res.status_code != 200:
+                continue
+
+            data = res.json()
+            results = data.get("query", {}).get("search", [])
+
+            if not results:
+                continue
+
+            page_title = results[0]["title"]
+
+            if "アイカツ" not in page_title and "STAR" not in page_title:
+                continue
+
+            summary_url = f"https://ja.wikipedia.org/api/rest_v1/page/summary/{page_title}"
+            res2 = requests.get(summary_url, timeout=5)
+
+            if res2.status_code != 200:
+                continue
+
+            page = res2.json()
+
+            return {
+                "release_date": "",
+                "composer": "",
+                "lyricist": "",
+                "arranger": "",
+                "album": page.get("title", ""),
+                "series": "アイカツ！",
+                "unit": "",
+                "source_url": page.get("content_urls", {}).get("desktop", {}).get("page", ""),
+                "confidence": "medium"
+            }
+
+        except Exception as e:
+            print(f"[WIKI AIKATSU ERROR] {title}: {e}", flush=True)
+
+    return None
 
 def search_song(title: str, song_id: str) -> Song:
     print(f"[START] {title}", flush=True)
@@ -119,15 +168,29 @@ def search_song(title: str, song_id: str) -> Song:
         "confidence": "unknown"
     }
 
-    print(f"[WIKI START] {title}", flush=True)
-    wiki_data = search_wikipedia(title)
+    print(f"[WIKI AIKATSU START] {title}", flush=True)
+    wiki_data = search_wikipedia_aikatsu(title)
 
     if wiki_data:
-        print(f"[WIKI HIT] {title}: {wiki_data}", flush=True)
+        print(f"[WIKI AIKATSU HIT] {title}: {wiki_data}", flush=True)
         merge_if_empty(data, wiki_data)
         data["source"] = "Wikipedia"
     else:
-        print(f"[WIKI MISS] {title}", flush=True)
+        print(f"[WIKI AIKATSU MISS] {title}", flush=True)
+
+    print(f"[AIKATSU WIKI START] {title}", flush=True)
+    aikatsu_wiki_data = search_aikatsu_wiki(title)
+
+    if aikatsu_wiki_data:
+        print(f"[AIKATSU WIKI HIT] {title}: {aikatsu_wiki_data}", flush=True)
+        merge_if_empty(data, aikatsu_wiki_data)
+
+        if data.get("source"):
+            data["source"] += "+AikatsuWiki"
+        else:
+            data["source"] = "AikatsuWiki"
+    else:
+        print(f"[AIKATSU WIKI MISS] {title}", flush=True)
 
     if has_missing_required(data):
         print(f"[GEMINI START] {title}", flush=True)
@@ -143,23 +206,27 @@ def search_song(title: str, song_id: str) -> Song:
                 merge_if_empty(data, gemini_data)
 
             if data.get("source"):
-                data["source"] = data["source"] + "+Gemini"
+                data["source"] += "+Gemini"
             else:
                 data["source"] = "Gemini"
 
         except Exception as e:
             print(f"[GEMINI ERROR] {title}: {e}", flush=True)
+
             if not data.get("source"):
                 data["source"] = "unknown"
+
             data["confidence"] = data.get("confidence") or "low"
 
     else:
         print(f"[GEMINI SKIP] {title} / no missing fields", flush=True)
 
     print(f"[FINAL DATA] {title}: {data}", flush=True)
+
     if data.get("source") == "Gemini" and has_missing_required(data):
         print(f"[SKIP SAVE] Gemini failed or incomplete: {title}", flush=True)
         raise Exception("Gemini補完に失敗したためDB保存をスキップしました")
+
     song = Song(
         id=song_id,
         title=title,
