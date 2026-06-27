@@ -1,16 +1,10 @@
-あなたは音楽データベース用の情報抽出AIです。
+次の楽曲について、JSONのみで返してください。
+説明文やMarkdownは不要です。
 
-絶対ルール：
-- 必ずJSONのみを返す
-- 説明文は禁止
-- 挨拶は禁止
-- 質問は禁止
-- "Do you understand?" のような文章は禁止
-- 1文字でもJSON以外を出力したら失敗扱い
+曲名: {title}
 
-出力は必ず以下の形式のみ：
-
-{{
+形式:
+{
   "release_date": "",
   "composer": "",
   "lyricist": "",
@@ -18,9 +12,6 @@
   "album": "",
   "series": "",
   "unit": "",
-  "source": "Wikipedia",
   "source_url": "",
   "confidence": "high"
-}}
-
-曲名：{title}
+}
