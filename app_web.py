@@ -83,13 +83,13 @@ with tab1:
         rows = sorted(rows, key=lambda x: x["title"], reverse=True)
     import pandas as pd
 
-    export_rows = [dict(r) for r in rows]
-    export_df = pd.DataFrame(export_rows)
+    all_export_rows = [dict(r) for r in get_all_songs()]
+    all_export_df = pd.DataFrame(all_export_rows)
 
     st.download_button(
-        label="📥 表示中の楽曲をCSV出力",
-        data=export_df.to_csv(index=False, encoding="utf-8-sig"),
-        file_name="aikatsu_song_db_export.csv",
+        "📦 DB全件バックアップCSV出力",
+        data=all_export_df.to_csv(index=False, encoding="utf-8-sig"),
+        file_name="aikatsu_song_db_backup.csv",
         mime="text/csv"
     )
     st.divider()
