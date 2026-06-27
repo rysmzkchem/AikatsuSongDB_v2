@@ -79,7 +79,10 @@ def search_wikipedia(title: str):
 
 
 def search_song(title: str, song_id: str) -> Song:
+    print(f"[START] {title}")
+
     norm_title = normalize(title)
+    print(f"[NORMALIZE] {title} -> {norm_title}")
 
     cached = get_song_by_title(norm_title)
 
@@ -101,6 +104,8 @@ def search_song(title: str, song_id: str) -> Song:
             status=cached["status"]
         )
 
+    print(f"[DB MISS] {title}")
+
     data = {
         "release_date": "",
         "composer": "",
@@ -114,19 +119,25 @@ def search_song(title: str, song_id: str) -> Song:
         "confidence": "unknown"
     }
 
+    print(f"[WIKI START] {title}")
     wiki_data = search_wikipedia(title)
 
     if wiki_data:
-        print(f"[WIKI HIT] {title}")
+        print(f"[WIKI HIT] {title}: {wiki_data}")
         merge_if_empty(data, wiki_data)
         data["source"] = "Wikipedia"
+    else:
+        print(f"[WIKI MISS] {title}")
 
     if has_missing_required(data):
-        print(f"[GEMINI補完] {title}")
+        print(f"[GEMINI START] {title}")
 
         try:
             raw = get_song_info(title)
+            print(f"[GEMINI RAW] {title}: {raw}")
+
             gemini_data = json.loads(raw)
+            print(f"[GEMINI DATA] {title}: {gemini_data}")
 
             if isinstance(gemini_data, dict):
                 merge_if_empty(data, gemini_data)
@@ -137,10 +148,15 @@ def search_song(title: str, song_id: str) -> Song:
                 data["source"] = "Gemini"
 
         except Exception as e:
-            print(f"[GEMINI ERROR] {e}")
+            print(f"[GEMINI ERROR] {title}: {e}")
             if not data.get("source"):
                 data["source"] = "unknown"
             data["confidence"] = data.get("confidence") or "low"
+
+    else:
+        print(f"[GEMINI SKIP] {title} / no missing fields")
+
+    print(f"[FINAL DATA] {title}: {data}")
 
     song = Song(
         id=song_id,
@@ -158,6 +174,8 @@ def search_song(title: str, song_id: str) -> Song:
         status="done"
     )
 
+    print(f"[SAVE START] {title}")
     add_song(song.__dict__)
+    print(f"[SAVE DONE] {title}")
 
     return song

@@ -116,32 +116,50 @@ with tab2:
 
         st.write("CSV読み込み成功")
 
-        if st.button("CSVを自動補完してDB登録"):
-            from search_engine import search_song
+       if st.button("CSVを自動補完してDB登録"):
+        from search_engine import search_song
 
-            count = 0
-            skipped = 0
+        count = 0
+        skipped = 0
+        errors = 0
 
-            for i, row in df.iterrows():
-                title = str(row.get("title", "")).strip()
+        status_area = st.empty()
+        progress = st.progress(0)
 
-                if not title:
-                    skipped += 1
-                    continue
+        for i, row in df.iterrows():
+            title = str(row.get("title", "")).strip()
 
-                # ★DBにあればスキップ
-                if get_song_by_title(title):
-                    skipped += 1
-                    continue
+            if not title:
+                skipped += 1
+                continue
 
-                song_id = f"csv_{i}_{title}"
-                with st.spinner(f"🔍 {title} を検索中..."):
-                    search_song(title, song_id)
-                    
+            if get_song_by_title(title):
+                skipped += 1
+                status_area.info(f"⏭ スキップ済み: {title}")
+                continue
+
+            song_id = f"csv_{i}_{title}"
+
+            try:
+                status_area.write(f"🔍 検索中: {title}")
+
+                result = search_song(title, song_id)
+
+                status_area.success(
+                    f"✅ 完了: {title} / source={result.source} / confidence={result.confidence}"
+                )
+
                 count += 1
 
-            st.success(f"{count}件登録しました / {skipped}件スキップしました")
-            st.rerun()
+            except Exception as e:
+                errors += 1
+                status_area.error(f"❌ エラー: {title} / {e}")
+                print(f"[APP ERROR] {title}: {e}")
+
+            progress.progress((i + 1) / len(df))
+
+        st.success(f"登録完了: {count}件 / スキップ {skipped}件 / エラー {errors}件")
+        st.rerun()
 
     st.divider()
 
