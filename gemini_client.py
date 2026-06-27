@@ -1,27 +1,38 @@
 import os
 import json
-import traceback
 import re
+import traceback
 from pathlib import Path
 
 from google import genai
 from google.genai import types
 
 
+# =========================
+# API設定
+# =========================
 API_KEY = os.getenv("API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME", "gemini-1.5-flash")
 
 if not API_KEY:
-    raise ValueError("API_KEY is missing")
+    raise ValueError("API_KEY is missing. Streamlit Cloud の Secrets に API_KEY を設定してください。")
 
 client = genai.Client(api_key=API_KEY)
 
 PROMPT_PATH = Path("prompts/song_prompt.txt")
 
 
+# =========================
+# JSON抽出
+# =========================
 def extract_json(text: str) -> str:
+    if not text:
+        return "{}"
+
     text = text.strip()
-    text = text.replace("```json", "").replace("```", "").strip()
+    text = text.replace("```json", "")
+    text = text.replace("```", "")
+    text = text.strip()
 
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if match:
@@ -30,6 +41,9 @@ def extract_json(text: str) -> str:
     return text
 
 
+# =========================
+# Gemini検索
+# =========================
 def get_song_info(title: str) -> str:
     try:
         prompt_template = PROMPT_PATH.read_text(encoding="utf-8")
