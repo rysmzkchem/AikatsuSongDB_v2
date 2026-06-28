@@ -1,13 +1,18 @@
-DB_NAME = "aikatsu.db"
-
+import os
 import re
 import unicodedata
-import sqlite3
+from supabase import create_client
 
 
-# =========================
-# 正規化
-# =========================
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("SUPABASE_URL / SUPABASE_KEY が設定されていません")
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
 def normalize(text):
     if not text:
         return ""
@@ -20,209 +25,85 @@ def normalize(text):
     return text
 
 
-# =========================
-# 接続
-# =========================
-def get_connection():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-# =========================
-# 初期化
-# =========================
 def init_db():
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS songs (
-        id TEXT PRIMARY KEY,
-        title TEXT,
-        release_date TEXT,
-        composer TEXT,
-        lyricist TEXT,
-        arranger TEXT,
-        album TEXT,
-        series TEXT,
-        unit TEXT,
-        source TEXT,
-        source_url TEXT,
-        confidence TEXT,
-        status TEXT
-    )
-    """)
-
-    cur.execute("PRAGMA table_info(songs)")
-    columns = [c[1] for c in cur.fetchall()]
-
-    if "title_norm" not in columns:
-        cur.execute("ALTER TABLE songs ADD COLUMN title_norm TEXT")
-        conn.commit()
-
-        cur.execute("SELECT id, title FROM songs")
-        rows = cur.fetchall()
-
-        for r in rows:
-            cur.execute("""
-                UPDATE songs
-                SET title_norm = ?
-                WHERE id = ?
-            """, (normalize(r["title"]), r["id"]))
-
-    conn.commit()
-    conn.close()
+    # SupabaseではSQL Editorでテーブル作成済みなので何もしない
+    return
 
 
-# =========================
-# 追加
-# =========================
 def add_song(song: dict):
-    conn = get_connection()
-    cur = conn.cursor()
+    song["title_norm"] = normalize(song.get("title", ""))
 
-    song["title_norm"] = normalize(song["title"])
-
-    cur.execute("""
-    INSERT INTO songs (
-        id, title, release_date, composer, lyricist,
-        arranger, album, series, unit,
-        source, source_url, confidence, status, title_norm
-    ) VALUES (
-        :id, :title, :release_date, :composer, :lyricist,
-        :arranger, :album, :series, :unit,
-        :source, :source_url, :confidence, :status, :title_norm
-    )
-    """, song)
-
-    conn.commit()
-    conn.close()
+    result = supabase.table("songs").upsert(song).execute()
+    return result
 
 
-# =========================
-# 全件取得
-# =========================
 def get_all_songs():
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT * FROM songs")
-    rows = cur.fetchall()
-
-    conn.close()
-    return rows
+    result = supabase.table("songs").select("*").execute()
+    return result.data
 
 
-# =========================
-# 検索（完全一致）
-# =========================
 def get_song_by_title(title):
-    conn = get_connection()
-    cur = conn.cursor()
+    title_norm = normalize(title)
 
-    cur.execute("""
-    SELECT * FROM songs
-    WHERE title_norm = ?
-    """, (normalize(title),))
+    result = (
+        supabase.table("songs")
+        .select("*")
+        .eq("title_norm", title_norm)
+        .limit(1)
+        .execute()
+    )
 
-    row = cur.fetchone()
-    conn.close()
+    if result.data:
+        return result.data[0]
 
-    return row
+    return None
 
 
-# =========================
-# 検索（部分一致）
-# =========================
 def search_song_db(keyword):
-    conn = get_connection()
-    cur = conn.cursor()
+    keyword_norm = normalize(keyword)
 
-    keyword = normalize(keyword)
+    result = (
+        supabase.table("songs")
+        .select("*")
+        .ilike("title_norm", f"%{keyword_norm}%")
+        .execute()
+    )
 
-    cur.execute("""
-    SELECT * FROM songs
-    WHERE title_norm LIKE ?
-    """, (f"%{keyword}%",))
-
-    rows = cur.fetchall()
-    conn.close()
-
-    return rows
+    return result.data
 
 
-# =========================
-# 更新
-# =========================
 def update_song(song_id, updates):
-    conn = get_connection()
-    cur = conn.cursor()
+    updates["title_norm"] = normalize(updates.get("title", ""))
 
-    cur.execute("""
-    UPDATE songs
-    SET title=?,
-        release_date=?,
-        composer=?,
-        lyricist=?,
-        arranger=?,
-        album=?,
-        series=?,
-        unit=?,
-        source=?,
-        source_url=?,
-        confidence=?,
-        status=?
-    WHERE id=?
-    """, (
-        updates["title"],
-        updates["release_date"],
-        updates["composer"],
-        updates["lyricist"],
-        updates["arranger"],
-        updates["album"],
-        updates["series"],
-        updates["unit"],
-        updates["source"],
-        updates["source_url"],
-        updates["confidence"],
-        updates["status"],
-        song_id
-    ))
+    result = (
+        supabase.table("songs")
+        .update(updates)
+        .eq("id", song_id)
+        .execute()
+    )
 
-    conn.commit()
-    conn.close()
+    return result
 
 
-# =========================
-# 削除
-# =========================
 def delete_song(song_id):
-    conn = get_connection()
-    cur = conn.cursor()
+    result = (
+        supabase.table("songs")
+        .delete()
+        .eq("id", song_id)
+        .execute()
+    )
 
-    cur.execute("DELETE FROM songs WHERE id=?", (song_id,))
-
-    conn.commit()
-    conn.close()
+    return result
 
 
-# =========================
-# 正規化再生成
-# =========================
 def update_all_title_norm():
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT id, title FROM songs")
-    rows = cur.fetchall()
+    rows = get_all_songs()
 
     for r in rows:
-        cur.execute("""
-        UPDATE songs
-        SET title_norm = ?
-        WHERE id = ?
-        """, (normalize(r["title"]), r["id"]))
-
-    conn.commit()
-    conn.close()
+        update_song(
+            r["id"],
+            {
+                **r,
+                "title_norm": normalize(r.get("title", ""))
+            }
+        )
