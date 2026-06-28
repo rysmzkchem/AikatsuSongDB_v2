@@ -223,14 +223,12 @@ def search_song(title: str, song_id: str) -> Song:
 
     print(f"[FINAL DATA] {title}: {data}", flush=True)
 
-    if not data.get("composer") and not data.get("lyricist") and not data.get("arranger"):
-        print(f"[SKIP SAVE] no creator info: {title}", flush=True)
-        raise Exception("作曲者・作詞者・編曲者がすべて空欄のためDB保存をスキップしました")
+    if has_missing_required(data):
+        print(f"[SAVE INCOMPLETE] {title}: 一部情報が空欄ですが曲名だけ保存します", flush=True)
+        data["status"] = "incomplete"
+    else:
+        data["status"] = "done"
 
-    # アイカツ関連と判断できない場合は保存しない
-    if not data.get("series") and not data.get("album") and not data.get("source_url"):
-        print(f"[SKIP SAVE] not Aikatsu related: {title}", flush=True)
-        raise Exception("アイカツ関連楽曲として確認できなかったためDB保存をスキップしました")
 
     song = Song(
         id=song_id,
@@ -245,7 +243,7 @@ def search_song(title: str, song_id: str) -> Song:
         source=data.get("source", ""),
         source_url=data.get("source_url", ""),
         confidence=data.get("confidence", "unknown"),
-        status="done"
+        status=data.get("status", "done")
     )
 
     print(f"[SAVE START] {title}", flush=True)

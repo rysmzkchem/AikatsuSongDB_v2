@@ -7,7 +7,6 @@ from supabase import create_client
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-print("[DB MODE] Supabase db.py loaded", flush=True)
 print("[SUPABASE URL]", SUPABASE_URL, flush=True)
 
 if not SUPABASE_URL or not SUPABASE_KEY:
@@ -36,11 +35,7 @@ def init_db():
 def add_song(song: dict):
     song["title_norm"] = normalize(song.get("title", ""))
 
-    print("[SUPABASE INSERT]", song, flush=True)
-
     result = supabase.table("songs").upsert(song).execute()
-
-    print("[SUPABASE RESULT]", result.data, flush=True)
 
     return result
 
